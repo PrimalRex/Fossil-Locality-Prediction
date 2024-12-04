@@ -7,8 +7,8 @@
 
 ----
 
-![image](https://github.com/user-attachments/assets/c6fc6730-bf82-486d-bdac-f5c520413d22)
+![image](https://github.com/user-attachments/assets/97cf5ffb-fb9f-453b-9810-cdd6327b2688)
 
 ```
-CAPTION: [TRIASSIC SUITABILITY PREDICTIONS - EXTREMELY ROUGH PROOF OF CONCEPT FROM NOVEMBER 30TH, 2024]
+CAPTION: [TRIASSIC SUITABILITY PREDICTIONS - EXTREMELY ROUGH PROOF OF CONCEPT FROM DECEMBER 4TH, 2024]
 ```
