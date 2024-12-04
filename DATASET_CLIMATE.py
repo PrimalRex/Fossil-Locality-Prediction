@@ -61,8 +61,8 @@ CLIMATE_DIR = pfl.DATASET_DIR / "CLIMATE"
 pflh.createDirectoryIfNotExist(CLIMATE_DIR)
 
 # Define the path to resources (Precipitation and Temperatures)
-CLIMATE_PRECIPITATION_RESOURCE_DIR = pfl.RESOURCES_DIR / "MeanAnnualPrecipitation"
-CLIMATE_TEMPERATURE_RESOURCE_DIR = pfl.RESOURCES_DIR / "MeanAnnualTemperatures"
+CLIMATE_PRECIPITATION_RESOURCE_DIR = pfl.RESOURCES_DIR / "1.0x1.0MeanAnnualPrecipitation"
+CLIMATE_TEMPERATURE_RESOURCE_DIR = pfl.RESOURCES_DIR / "1.0x1.0MeanAnnualTemperatures"
 
 # Decay Rate: 0.1 = Extreme Decay, 1 = Equal Weighted Average
 alpha = .3
