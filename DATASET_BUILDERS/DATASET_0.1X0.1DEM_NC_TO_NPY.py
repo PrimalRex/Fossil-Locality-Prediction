@@ -4,10 +4,11 @@ import numpy as np
 from netCDF4 import Dataset
 from tqdm import tqdm
 
-import PFL_HELPER as pflh
-import PFL_PATHS as pfl
+from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
+
+# This script converts the 0.1x0.1 DEMs from netCDF format to NumPy format.
 
 # Our main resource are the netCDF .1x.1 DEMs
 POINT_ONE_DEG_NC_DEMS_DIR = pfl.RESOURCES_DIR / "0.1x0.1DEMs_NC"

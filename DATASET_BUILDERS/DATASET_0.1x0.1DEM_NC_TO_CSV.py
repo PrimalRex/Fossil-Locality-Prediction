@@ -6,13 +6,14 @@ from matplotlib import pyplot as plt
 from netCDF4 import Dataset
 from tqdm import tqdm
 
-import PFL_HELPER as pflh
-import PFL_PATHS as pfl
+from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
 
-# WARNING: This script will extract and populate the .1x.1 DEMs as CSV files completely uncompressed.
+# WARNING: This script will extract and populate the 0.1x0.1 DEMs as CSV files completely uncompressed.
 # This will take approx 200MB per DEM file. Ensure you have enough disk space if you wish to proceed.
+# TODO: Maybe mark this builder as a deprecation, there is no need to store the DEMs as CSV files for any reason in the project
+# TODO: however for now it will be kept for reference.
 
 # Our main resource are the netCDF .1x.1 DEMs
 POINT_ONE_DEG_NC_DEMS_DIR = pfl.RESOURCES_DIR / "0.1x0.1DEMs_NC"

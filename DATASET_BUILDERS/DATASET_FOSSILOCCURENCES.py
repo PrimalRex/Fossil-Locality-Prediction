@@ -4,8 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-import PFL_HELPER as pflh
-import PFL_PATHS as pfl
+from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
 
@@ -16,19 +15,19 @@ pflh.createDirectoryIfNotExist(FOSSIL_DIR)
 # Define the path to fossil resources
 FOSSIL_RESOURCE_DIR = pfl.RESOURCES_DIR / "FossilRecord"
 
-# Specify the resolution, technically 'infinite' and therefore we can downscale to any resolution
-# 1 = 1x1 degree, 2 = 0.5x0.5 degree, 5 = 0.2x0.2 degree, 10 = 0.1x0.1 degree
+# Specify the resolution, technically 'infinite' and therefore we can be downscaled to any resolution
+# 1 = 1x1 degree, 2 = 0.5x0.5 degree, 4 = 0.25x0.25 degree, 10 = 0.1x0.1 degree
 resolutionScale = 1
 
 # Iterate through the count times to produce the fossil projections across the count * timestep time period
 fossilTarget = np.zeros((180 * resolutionScale + 1) * (360 * resolutionScale + 1))
 # Get a file by specific index for now
-file = pflh.getDirectoryFileNames(FOSSIL_RESOURCE_DIR)[0]
+file = pflh.getDirectoryFileNames(FOSSIL_RESOURCE_DIR)[-1]
 with open(os.path.join(FOSSIL_RESOURCE_DIR, file), "r", encoding="utf-8") as f:
     data = f.read()
 
 # Cleanup the existing CSV data and craft 2 arrays for longitude and latitude
-rows = data.split("\n")[20:-1]
+rows = data.split("\n")[23:-1]
 fossilLongs = []
 fossilLats = []
 for i in tqdm(range(0, len(rows)), desc="Cleaning Fossil Coordinates"):
@@ -47,13 +46,14 @@ for i in tqdm(range(0, len(fossilLongs)), desc="Projecting Fossil Coordinates"):
 
     # Ensure indices are within bounds
     if 0 <= longIdx < 360 * resolutionScale and 0 <= latIdx < 180 * resolutionScale:
-        # Find the index from the flattened target and increment it, clamped at "1" to avoid any sampling bias and also for binary classification
+        # Find the index from the flattened target and increment it by 0.1, we clamp at 1 to normalize the density
+        # Attempting to use sampling bias to our advantage here in order to prove density prediction
         fossilTarget[latIdx * (360 * resolutionScale + 1) + longIdx] = min(1, fossilTarget[latIdx * (360 * resolutionScale + 1) + longIdx] + 1)
 
 # Output file to the right directory and name
-outDir = FOSSIL_DIR / f"{file.split('.')[0]}_resolutionScale_{resolutionScale}_occurences_{int(np.sum(fossilTarget))}"
-pflh.createDirectoryIfNotExist(outDir)
-outFile = outDir / f"{file.split('.')[0]}_resolutionScale_{resolutionScale}_occurences_{int(np.sum(fossilTarget))}.npy"
+#outDir = FOSSIL_DIR / f"{file.split('.')[0]}_resolutionScale_{resolutionScale}_density_{int(np.sum(fossilTarget))}"
+#pflh.createDirectoryIfNotExist(outDir)
+outFile = FOSSIL_DIR / f"{file.split('.')[0]}_resolutionScale_{resolutionScale}_density_{int(np.sum(fossilTarget))}.npy"
 if not os.path.isfile(outFile):
     np.save(outFile, fossilTarget)
 
