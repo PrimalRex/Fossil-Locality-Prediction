@@ -1,6 +1,8 @@
 ﻿import pathlib
 
-DATASET_DIR = pathlib.Path("../DATASETS")
-MODELS_DIR = pathlib.Path("../MAIN/MODELS")
-MODELS_OUTPUT_DIR = pathlib.Path("../MAIN/MODELS/OUTPUT")
-RESOURCES_DIR = pathlib.Path("../RESOURCES")
+ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent
+
+DATASET_DIR = ROOT_DIR / "DATASETS"
+MODELS_DIR = ROOT_DIR / "MAIN" / "MODELS"
+MODELS_OUTPUT_DIR = MODELS_DIR / "OUTPUT"
+RESOURCES_DIR = ROOT_DIR / "RESOURCES"

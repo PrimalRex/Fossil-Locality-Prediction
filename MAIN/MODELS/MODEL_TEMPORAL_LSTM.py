@@ -9,13 +9,10 @@ from sklearn.utils import class_weight
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
+from METRICS.METRIC_FOSSIL_CONFIDENCE import fossiliferousConfidenceScore
 from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
-
-# Create a directory for the Climate if it doesn't exist
-CLIMATE_DIR = pfl.DATASET_DIR / "CLIMATE"
-pflh.createDirectoryIfNotExist(CLIMATE_DIR)
 
 # Define how many time slices we are looking at (aka temporal resolution)
 # 50 = End of Triassic
@@ -186,14 +183,16 @@ model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
 
 # Compile
 model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
 
 # Train
 history = model.fit(
     xTrain, yTrain,
     validation_data=(xVal, yVal),
-    epochs=10,
-    batch_size=64,
+    epochs=40,
+    batch_size=32,
     class_weight=classWeights,
+    callbacks=[callback],
     verbose=1
 )
 
@@ -209,12 +208,13 @@ print(f"Test Overall Accuracy: {accuracy_score(yTest, testBinaryPredictions):.4f
 # How many of the predictions are actually true positives
 print(f"Test Precision: {precision_score(yTest, testBinaryPredictions, zero_division=0):.4f}")
 print(f"Test Recall: {recall_score(yTest, testBinaryPredictions, zero_division=0):.4f}")
+print(f"Test Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, testPredictions):.4f}")
 
 # Stratified random guessing
 randomTestPredictions = np.random.choice([0, 1], len(yTest), True, [1 - np.mean(yTrain), np.mean(yTrain)])
 print(f"Stratified Random Baseline Accuracy: {accuracy_score(yTest, randomTestPredictions):.4f}")
 print(f"Stratified Random Baseline Precision: {precision_score(yTest, randomTestPredictions, zero_division=0):.4f}")
-
+print(f"Stratified Random Baseline Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, randomTestPredictions):.4f}")
 print(f"----------------------------")
 
 # Normalise and reshape global features
@@ -229,6 +229,7 @@ globalBinaryPredictions = (globalPredictions >= 0.9).astype(int)
 print(f"Global Accuracy: {accuracy_score(fossilLabels, globalBinaryPredictions):.4f}")
 print(f"Global Precision: {precision_score(fossilLabels, globalBinaryPredictions, zero_division=0):.4f}")
 print(f"Global Recall: {recall_score(fossilLabels, globalBinaryPredictions, zero_division=0):.4f}")
+print(f"Global Fossiliferous Confidence: {fossiliferousConfidenceScore(fossilLabels, globalPredictions):.4f}")
 print(f"Global Random Guessing Baseline: {267 / 65431:.4f}")
 
 globalPredictionsDF = pd.DataFrame({
