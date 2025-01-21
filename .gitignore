@@ -2,7 +2,7 @@
 DATASETS/
 .idea/
 ARCHIVE/
-MODELS/
+OUTPUT/
 GRAPHS/
 
 # Byte-compiled / optimized / DLL files
