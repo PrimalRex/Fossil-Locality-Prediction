@@ -1,5 +1,5 @@
 ﻿import os
-
+import tensorflow as tf
 
 # HELPER FUNCTIONS FOR PFL
 def createDirectoryIfNotExist(DIR):
@@ -8,10 +8,8 @@ def createDirectoryIfNotExist(DIR):
     else:
         DIR.mkdir(exist_ok=True)
 
-
 def getDirectoryFileCount(DIR):
     return len(getDirectoryFileNames(DIR))
-
 
 def getDirectoryFileNames(DIR):
     return os.listdir(DIR)

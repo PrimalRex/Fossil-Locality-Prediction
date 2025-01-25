@@ -36,7 +36,7 @@ for latIdx, row in enumerate(rows):
         for longIdx, value in enumerate(columns):
             demData[latIdx, longIdx] = float(value)
 
-binaryDem = np.where(demData <= 0, 1, 0)
+binaryDem = np.where(demData <= 0, 0, 1)
 
 plt.figure(figsize=(20, 10))
 plt.imshow(binaryDem, cmap="viridis")
@@ -69,7 +69,7 @@ oceanMaskBinary = (oceanMaskArray > 128).astype(int)
 # Reshape the new map to the same shape as the DEM data
 newMap = newMap.reshape((180 * resolution + 1, 360 * resolution + 1))
 # Apply the ocean mask to the DEM map whilst conserving the unsuitability values
-newMap = np.maximum(newMap, oceanMaskBinary)
+#newMap = np.minimum(newMap, oceanMaskBinary)
 
 # Visualise the new map
 plt.figure(figsize=(20, 10))

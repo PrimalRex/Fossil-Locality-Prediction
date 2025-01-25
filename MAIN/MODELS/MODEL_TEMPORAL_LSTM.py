@@ -98,6 +98,8 @@ for i in tqdm(range(count - 1, -1, -1), desc="Adding Climate and Elevation Data"
             for longIdx, value in enumerate(columns):
                 demData[latIdx, longIdx] = float(value)
 
+    # Cache the offset to reduce the instruction count for the for loop
+    offset = features * (count - 1 - i)
     # Iterate over the projectionData, which holds every cell index
     for projectedIdx in range(len(projectionData)):
         # Get the index to look at
@@ -109,11 +111,11 @@ for i in tqdm(range(count - 1, -1, -1), desc="Adding Climate and Elevation Data"
         demValue = demData.flatten()[dataIdx]
         koppenValue = koppenClasses.flatten()[dataIdx]
 
-        #Assign precipitation, temperature, elevation, koppen data to the climate dataset
-        climateDataset[projectedIdx, features * (count - 1 - i)] = precipValue
-        climateDataset[projectedIdx, features * (count - 1 - i) + 1] = tempValue
-        climateDataset[projectedIdx, features * (count - 1 - i) + 2] = demValue
-        climateDataset[projectedIdx, features * (count - 1 - i) + 3] = koppenValue
+        # Assign precipitation, temperature, elevation, koppen data to the climate dataset
+        climateDataset[projectedIdx, offset] = precipValue
+        climateDataset[projectedIdx, offset + 1] = tempValue
+        climateDataset[projectedIdx, offset + 2] = demValue
+        climateDataset[projectedIdx, offset + 3] = koppenValue
 
 # Define column names
 columns = []
@@ -132,18 +134,12 @@ columns.append("FossilLabel")
 df = pd.DataFrame(climateDataset, columns=columns)
 print(df.head())
 
-# Load the ground truth map and create a mask using that and the fossil labels
-groundTruth = np.load(GROUNDTRUTHS_DATASET_DIR / f"groundTruth_resolutionScale_{resolution}.npy").flatten()
-# Create a mask to retain only true positives and true negatives
-truePNMask = (fossilLabels.flatten() == 1) | (groundTruth == 0)
-
-# Extract all the features and mask them using our ground truths to maximise training
-cellFeatures = df.drop(columns=["FossilLabel"]).values[truePNMask]
-cellLabels = fossilLabels.flatten()[truePNMask]
+cellFeatures = df.drop(columns=["FossilLabel"])
+cellLabels = fossilLabels.flatten()
 
 # Log the number of true positives and true negatives
-print("True Positives (Fossils):", np.sum(cellLabels == 1))
-print("True Negatives:", np.sum(cellLabels == 0))
+print("True Positives: ", np.sum(cellLabels == 1))
+print("True Negatives: ", np.sum(cellLabels == 0))
 
 # Normalise features
 scaler = MinMaxScaler()
@@ -175,10 +171,12 @@ print("Class Weights:", classWeights)
 # A simple LSTM Model
 tf.keras.backend.clear_session()
 model =  keras.models.Sequential()
-model.add(tf.keras.layers.LSTM(64, return_sequences=True, input_shape=(count, features)))
+model.add(tf.keras.layers.LSTM(128, return_sequences=True, input_shape=(count, features)))
+model.add(tf.keras.layers.LSTM(64, return_sequences=True))
 model.add(tf.keras.layers.Dropout(0.2))
 model.add(tf.keras.layers.LSTM(32, return_sequences=False))
-model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dropout(0.1))
+model.add(tf.keras.layers.Dense(128, activation='relu'))
 model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
 
 # Compile
@@ -189,8 +187,8 @@ callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=8, rest
 history = model.fit(
     xTrain, yTrain,
     validation_data=(xVal, yVal),
-    epochs=40,
-    batch_size=32,
+    epochs=25,
+    batch_size=3500,
     class_weight=classWeights,
     callbacks=[callback],
     verbose=1
