@@ -1,4 +1,5 @@
 ﻿import os
+import pathlib
 
 import numpy as np
 import pandas as pd
@@ -28,7 +29,7 @@ step = 5
 # 1 = 1 degree, 181x361 = 65431, 10 = 0.1 degree, 1801x3601 = 6483601
 resolution = 4
 # How many features we are looking at (precipitation, temperature, elevation, koppen)
-features = 2
+features = 3
 
 # Define the path to resources given by our input
 resPrefix = f"{1 / resolution}x{1 / resolution}"
@@ -63,8 +64,8 @@ for i in tqdm(range(count - 1, -1, -1), desc="Adding Climate and Elevation Data"
                        allow_pickle=True).flatten()
     demData = np.load(DEM_RESOURCE_DIR / pflh.getDirectoryFileNames(DEM_RESOURCE_DIR)[i],
                        allow_pickle=True).flatten()
-    # tempData = np.load(CLIMATE_TEMPERATURE_RESOURCE_DIR / pflh.getDirectoryFileNames(CLIMATE_TEMPERATURE_RESOURCE_DIR)[i],
-    #                    allow_pickle=True).flatten()
+    tempData = np.load(CLIMATE_TEMPERATURE_RESOURCE_DIR / pflh.getDirectoryFileNames(CLIMATE_TEMPERATURE_RESOURCE_DIR)[i],
+                       allow_pickle=True).flatten()
 
     # Load the projected coordinates
     projectionData = np.load(
@@ -76,12 +77,12 @@ for i in tqdm(range(count - 1, -1, -1), desc="Adding Climate and Elevation Data"
         dataIdx = int(projectionData[projectedIdx])
         precipValue = precData[dataIdx]
         demValue = demData[dataIdx]
-        #tempValue = tempData[dataIdx]
+        tempValue = tempData[dataIdx]
 
         # Assign values to the climate dataset
         climateDataset[projectedIdx, offset] = precipValue
         climateDataset[projectedIdx, offset + 1] = demValue
-        #climateDataset[projectedIdx, offset + 2] = tempValue
+        climateDataset[projectedIdx, offset + 2] = tempValue
 
 
 # Define column names
@@ -93,7 +94,7 @@ columns = []
 for i in range(count - 1, -1, -1):
     columns.append(f"Precipitation_T{i + 1}")
     columns.append(f"Elevation_T{i + 1}")
-    #columns.append(f"Temperature_T{i + 1}")
+    columns.append(f"Temperature_T{i + 1}")
     #columns.append(f"Koppen_T{i + 1}")
 columns.append("SedimentaryLabel")
 
@@ -116,8 +117,8 @@ cellFeatures = scaler.fit_transform(cellFeatures)
 cellFeatures = cellFeatures.reshape(cellFeatures.shape[0], count, features)
 
 # Stratified split for train, test, and validation sets
-xTrain, xVal, yTrain, yVal = train_test_split(cellFeatures, cellLabels, test_size=0.3, stratify=cellLabels, random_state=42)
-xVal, xTest, yVal, yTest = train_test_split(xVal, yVal, test_size=0.3, stratify=yVal, random_state=42)
+xTrain, xVal, yTrain, yVal = train_test_split(cellFeatures, cellLabels, test_size=0.1, stratify=cellLabels, random_state=42)
+xVal, xTest, yVal, yTest = train_test_split(xVal, yVal, test_size=0.99, stratify=yVal, random_state=42)
 
 # Check the lengths of the stratified dataset
 print("Training set:", np.bincount(yTrain.astype(int)))
@@ -176,10 +177,10 @@ model.summary()
 history = model.fit(
     xTrain, yTrain,
     validation_data=(xVal, yVal),
-    epochs=25,
+    epochs=22,
     batch_size=batchSize,
     class_weight=classWeights,
-    callbacks=[earlyStopping, lrScheduler],
+    #callbacks=[earlyStopping, lrScheduler],
     verbose=1
 )
 
@@ -209,9 +210,10 @@ globalPredictionsDF = pd.DataFrame({
 })
 
 # Save the prediction with the recall as a unique identifier
-outputPath = pfl.MODELS_OUTPUT_DIR / f"globalPredictions_Sedimentary_LSTM_{accuracy_score(cellLabels, globalBinaryPredictions):.4f}.csv"
+outName = f"globalPredictions_Sedimentary_LSTM_{accuracy_score(cellLabels, globalBinaryPredictions):.4f}"
+outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.csv"
 globalPredictionsDF.to_csv(outputPath, index=False)
 
 # Save the weights too
-outputPath = pfl.MODELS_OUTPUT_DIR / f"globalPredictions_Sedimentary_LSTM_{accuracy_score(cellLabels, globalBinaryPredictions):.4f}.h5"
+outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.h5"
 model.save_weights(outputPath)

@@ -17,13 +17,13 @@ endMYA = 0
 # Step size for intervals
 step = 5
 # How much to buffer the time range by (adds and subtracts from the current time step)
-timeBuffer = 2.75
+timeBuffer = 4
 # Define the geological context parameters for the desired data
 lithologies = "&lithology=!metamorphic,volcanic,unknown"
 environments = "&envtype=terr,lacust,fluvial,karst,terrother"
 
 # Create a directory for the fossil occurrences by time step
-FOSSIL_TIMESTEP_DIR = pfl.DATASET_DIR / "FOSSIL" / f"{startMYA}_{endMYA}_FOSSIL_OCCURENCES_BY_TIMESTEP"
+FOSSIL_TIMESTEP_DIR = pfl.DATASET_DIR / "FOSSIL" / f"{startMYA}_{endMYA}_FOSSIL_OCCURENCES_BY_{step}_TIMESTEP"
 pflh.createDirectoryIfNotExist(FOSSIL_TIMESTEP_DIR)
 
 # Iterate over the intervals and download data
