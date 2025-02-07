@@ -8,14 +8,14 @@ from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
 
-# This script converts the 0.1x0.1 DEMs from netCDF format to NumPy format.
+# This script converts any exported GIS CSVs from CSV format to NumPy format.
 
 # 1 = 1 degree, 181x361 = 65431, 10 = 0.1 degree, 1801x3601 = 6483601
 resolution = 4
 # Define the path to resources given by our input
 resPrefix = f"{1 / resolution}x{1 / resolution}"
 # Folder name without prefix
-suffix = "MeanAnnualTemperatures"
+suffix = "SedimentaryRockCategories"
 
 # Our main resource
 CSV_DIR = pfl.RESOURCES_DIR / f"{resPrefix}{suffix}"
