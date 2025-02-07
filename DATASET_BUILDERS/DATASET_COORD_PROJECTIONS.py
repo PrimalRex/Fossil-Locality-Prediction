@@ -8,13 +8,13 @@ from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
 
-# This script generates all the permuations of longitudes and latitudes into an appropriate sized cell resolution, then projects
+# This script generates all the permutations of longitudes and latitudes into an appropriate sized cell resolution, then projects
 # them to the specified time interval. These projections are saved as index pointers, the final output is a 1D array of indices which
 # point to the index of the cell at the specified time slice.
 # This is useful for quickly accessing cell focused data as we can avoid the expensive projection calculations during runtime dataset generation.
 
 # Specify the resolution, technically 'infinite' and therefore can be downscaled to any resolution
-resolutionScale = 10
+resolutionScale = 1
 # Specify the steps between each time slice in MYA
 timestep = 5
 # How many time slices we are looking to project to (50 = 0 -> 245 MYA)
@@ -22,7 +22,7 @@ count = 50
 
 # Create a directory for the Coordinate Projections
 resPrefix = f"{1 / resolutionScale}x{1 / resolutionScale}"
-COORDS_DIR = pfl.DATASET_DIR / f"{resPrefix}COORDS"
+COORDS_DIR = pfl.DATASET_DIR / f"{resPrefix}COORDS_PALEOMAPV19o_r1c"
 pflh.createDirectoryIfNotExist(COORDS_DIR)
 
 # Create a list of all combinations of longitudes and latitudes
@@ -57,7 +57,7 @@ for t in tqdm(range(0, count), desc="Projecting Coordinates"):
     print(projectionTarget[5000:5050])
     # Plot this to see what it looks like (kinda funky? Seems like it works)
     plt.figure(figsize=(20, 10))
-    plt.imshow(projectionTarget.reshape((latShape, longShape)), cmap="viridis", interpolation="nearest")
+    plt.imshow(projectionTarget.reshape((latShape, longShape)), cmap="terrain", interpolation="nearest")
     plt.title(f"Projection Target at Time Slice {t + 1}")
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
