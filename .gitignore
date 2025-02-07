@@ -4,6 +4,7 @@ DATASETS/
 ARCHIVE/
 OUTPUT/
 GRAPHS/
+*.aux.xml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
