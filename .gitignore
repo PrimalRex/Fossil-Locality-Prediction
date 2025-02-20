@@ -5,6 +5,7 @@ ARCHIVE/
 OUTPUT/
 GRAPHS/
 *.aux.xml
+kerastuner/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

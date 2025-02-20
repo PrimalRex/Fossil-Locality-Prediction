@@ -1,5 +1,5 @@
 ﻿import numpy as np
-from sklearn.metrics import recall_score, accuracy_score, precision_score, recall_score, roc_auc_score, roc_curve
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, roc_curve, f1_score
 from METRICS.METRIC_FOSSIL_CONFIDENCE import fossiliferousConfidenceScore
 
 # MAIN ------------------------------------------------------------------------
@@ -11,6 +11,7 @@ def displayMetricsAgainstRandomGuessing(yTrain, yTest, testPredictions, testBina
     print(f"{prefix} Overall Accuracy: {accuracy_score(yTest, testBinaryPredictions):.4f}")
     print(f"{prefix} Precision: {precision_score(yTest, testBinaryPredictions, zero_division=0):.4f}")
     print(f"{prefix} Recall: {recall_score(yTest, testBinaryPredictions, zero_division=0):.4f}")
+    print(f"{prefix} F1: {f1_score(yTest, testBinaryPredictions, zero_division=0):.4f}")
     print(f"{prefix} Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, testPredictions):.4f}")
     print(f"{prefix} AUC-ROC: {roc_auc_score(yTest, testPredictions):.4f}")
 
@@ -21,6 +22,7 @@ def displayMetricsAgainstRandomGuessing(yTrain, yTest, testPredictions, testBina
     print(f"{prefix} Random Baseline Accuracy: {accuracy_score(yTest, randomTestPredictions):.4f}")
     print(f"{prefix} Random Baseline Precision: {precision_score(yTest, randomTestPredictions, zero_division=0):.4f}")
     print(f"{prefix} Random Baseline Recall: {recall_score(yTest, randomTestPredictions, zero_division=0):.4f}")
+    print(f"{prefix} Random Baseline F1: {f1_score(yTest, randomTestPredictions, zero_division=0):.4f}")
     print(f"{prefix} Random Baseline Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, randomTestPredictions):.4f}")
     print(f"{prefix} AUC-ROC: {roc_auc_score(yTest, randomTestPredictions):.4f}")
     print(f"----------------------------")

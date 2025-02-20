@@ -11,14 +11,16 @@ from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
 
+# This tool is used to inspect the raw PBDB occurrence CSVs and do some preliminary cleaning and analysis of the query composition
+
 # 1 = 1 degree, 181x361 = 65431, 10 = 0.1 degree, 1801x3601 = 6483601
 resolution = 4
 resPrefix = f"{1 / resolution}x{1 / resolution}"
 
-FOSSIL_OCCURRENCE_DIR = pfl.DATASET_DIR / "FOSSIL_OCCURENCE_ANALYSIS"
+FOSSIL_OCCURRENCE_DIR = pfl.DATASET_DIR / "FOSSIL_OCCURRENCE_ANALYSIS"
 
 
-# Read the fossil occurrences from the first file in the directory
+# Read the fossil occurrences from the files in the directory
 for file in tqdm(pflh.getDirectoryFileNames(FOSSIL_OCCURRENCE_DIR), desc="Cleaning Fossil Data"):
     #file = pflh.getDirectoryFileNames(FOSSIL_OCCURRENCE_DIR)[0]
     with open(os.path.join(FOSSIL_OCCURRENCE_DIR, file), "r", encoding="utf-8") as f:
