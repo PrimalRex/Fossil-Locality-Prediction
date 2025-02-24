@@ -7,10 +7,10 @@
 
 ----
 
-![image](https://github.com/user-attachments/assets/0ffc7d1e-4989-4c0d-bda1-e999095e83e0)
+![OutputApproxAgeMap_Raster](https://github.com/user-attachments/assets/e62a29fa-7ae5-470e-8873-404719f4b99a)
 
 ```
-CAPTION: [FOSSIL PRESERVATION RICH PREDICTIONS - ROUGH PROOF OF CONCEPT FROM JANUARY 24TH, 2024]
+CAPTION: [BEDROCK BY OCCURENCES]
 ```
 
 ## Quick Start
