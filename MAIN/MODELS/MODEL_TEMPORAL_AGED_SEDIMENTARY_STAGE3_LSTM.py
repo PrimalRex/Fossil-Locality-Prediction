@@ -1,27 +1,50 @@
-﻿import os
+import os
 import pathlib
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from PIL import Image
 import tensorflow as tf
 import tensorflow.keras as keras
-from sklearn.metrics import accuracy_score
+from tensorflow.keras.utils import to_categorical
+import keras_tuner as kt
 from sklearn.model_selection import train_test_split
 from sklearn.utils import compute_class_weight
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
+from sklearn.metrics import accuracy_score
 
 from METRICS.METRIC_FEATURE_IMPORTANCE import displayFeatureImportance
-from METRICS.METRIC_SUMMARY_TABLES import displayMetricsAgainstRandomGuessing
+from METRICS.METRIC_SUMMARY_TABLES import displayMetricsAgainstRandomGuessing, displayMetricsAgainstRandomGuessingMultiClass
 from MODEL_TEMPORAL_LOGISTIC_REGRESSIONS import logisticModel_T1, logisticModel_FlatVector, logisticModel_MeanAverage
 from VISUALISERS.PLOT_TRAIN_HISTORY import plotAccuracy, plotLoss
-from MODEL_KERASTUNER_BINARY import BayesianBinaryOptim
 from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
+
+# FUNCTIONS -------------------------------------------------------------------
+
+# Model to be passed into keras fine tuner
+#def buildSkeleton(hp):
+
+# Categorises the age of the sedimentary rock into 5 categories
+def categoriseAge(value):
+    if value == 0 or value > 254:
+        return 0  # None (Pre-Mesozoic)
+    elif value >= 199:
+        return 4  # Triassic
+    elif value >= 143:
+        return 3  # Jurassic
+    elif value >= 64:
+        return 2  # Cretaceous
+    elif value >= 21:
+        return 1  # Cenozoic
+    else:
+        return 0  # None (Pre-Mesozoic)
 
 # MAIN ------------------------------------------------------------------------
 
-# This model is the 2nd stage in which we do a fundamental approach to sedimentary vs non-sedimentary regional predictions using the dataset at hand
-# This is then compared to a regression to investigate any temporal meaning in such a broad less-meaningful label set.
+# This model is the 3rd stage in which we do further analysis into identifying geological sedimentary regions
+# This, like the previous stage, compares to logistic regression models to appreciate the temporal aspect of the data
 
 # Define how many time slices we are looking at (aka temporal resolution)
 count = 50
@@ -35,27 +58,6 @@ features = 11
 
 # Define the path to resources given by our input
 resPrefix = f"{1 / resolution}x{1 / resolution}"
-
-# HYPERPARAMETER OPTIMISATION -------------------------------------------------------------------
-
-# Model to be passed into keras fine tuner
-def buildSkeleton(hp):
-    model = keras.models.Sequential()
-    model.add(tf.keras.layers.LSTM(units=hp.Int("LSTM_1", min_value=128, max_value=512, step=32), return_sequences=True, input_shape=(count, features)))
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(tf.keras.layers.Dropout(hp.Float("dropout_1", min_value=0.05, max_value=0.5, step=0.05)))
-
-    model.add(tf.keras.layers.LSTM(units=hp.Int("LSTM_2", min_value=64, max_value=256, step=32), return_sequences=False))
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(tf.keras.layers.Dropout(hp.Float("dropout_2", min_value=0.05, max_value=0.5, step=0.05)))
-
-    model.add(tf.keras.layers.Dense(units=hp.Int("dense_1", min_value=32, max_value=128, step=16), activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dropout(hp.Float("dropout_3", min_value=0.05, max_value=0.5, step=0.05)))
-    model.add(tf.keras.layers.Dense(1, activation="sigmoid"))
-
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, clipnorm=1.0)
-    model.compile(optimizer=optimizer, loss="binary_crossentropy", metrics=["accuracy"])
-    return model
 
 # Retrieve the right resources based on the resolution
 CLIMATE_PRECIPITATION_RESOURCE_DIR = pfl.DATASET_DIR / f"{resPrefix}MeanAnnualPrecipitation"
@@ -75,16 +77,17 @@ FOSSIL_SEDIMENT_LABELS_DIR = pfl.DATASET_DIR / f"{resPrefix}SedimentaryRockCateg
 
 # Mask to ignore any ocean or ice cells and focus on terrestrial cells
 oceanMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"OceanMaskBinary.npy", allow_pickle=True).flatten()
-# Load the sediment labels, 0 = Ocean, 1 = Non-Sedimentary, 2 = Sedimentary
-sedimentLabels = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"SedimentBinaryRegions.npy", allow_pickle=True).flatten()
-# Convert values to binary labels
-sedimentLabels[sedimentLabels == 1] = 0
-sedimentLabels[sedimentLabels == 2] = 1
+
+agedSedimentaryLabels = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"approxMyaSedimentRegions.npy", allow_pickle=True).flatten()
+#print(np.shape(agedSedimentaryLabels))
+
+# Categorise the ages into 5 integer categories (ready for one-hot)
+agedSedimentaryLabels = np.array([categoriseAge(age) for age in agedSedimentaryLabels])
 
 # count * X features + 1 label
 # 'climate' refers to the entire dataset, not to be confused with climate variables
 climateDataset = np.zeros(((180 * resolution + 1) * (360 * resolution + 1), (count * features) + 1))
-climateDataset[:, -1] = sedimentLabels.flatten()
+climateDataset[:, -1] = agedSedimentaryLabels.flatten()
 
 # Reverse loop through the time slices for chronological order (T50 -> T1) and adds each feature into the climateDataset
 for i in tqdm(range(count - 1, -1, -1), desc="Compiling Dataset Features: "):
@@ -164,7 +167,7 @@ for i in range(count - 1, -1, -1):
     columns.append(f"UpliftRate_T{i + 1}")
     columns.append(f"Slope_T{i + 1}")
     columns.append(f"DeathDensities_T{i + 1}")
-columns.append("SedimentaryLabel")
+columns.append("AgedSedimentaryLabel")
 
 # Filter the dataset by oceanMask
 filteredClimateDataset = climateDataset[oceanMask == 1]
@@ -174,25 +177,23 @@ df = pd.DataFrame(filteredClimateDataset, columns=columns)
 print(df.head())
 print("DataFrame size:", df.shape)
 
-cellLabels = df["SedimentaryLabel"].values.flatten()
-cellFeatures = df.drop("SedimentaryLabel", axis=1).values
-
-# Log the number of true positives and true negatives
-print("True Positives: ", np.sum(cellLabels == 1))
-print("True Negatives: ", np.sum(cellLabels == 0))
+cellLabels = df["AgedSedimentaryLabel"].values.flatten()
+# Convert to one-hot encoding
+cellLabelsOneHot = to_categorical(cellLabels, num_classes=5)
+cellFeatures = df.drop("AgedSedimentaryLabel", axis=1).values
 
 # Find the feature importance of the dataset
-# displayFeatureImportance(cellFeatures, cellLabels, df)
+#displayFeatureImportance(cellFeatures, np.argmax(cellLabelsOneHot, axis=1), df, "AgedSedimentaryLabel")
 
 # Stratified split for train/test/val sets
-xTrain, xVal, yTrain, yVal = train_test_split(cellFeatures, cellLabels, test_size=0.3, stratify=cellLabels, shuffle=True, random_state=42)
-xVal, xTest, yVal, yTest = train_test_split(xVal, yVal, test_size=0.3, stratify=yVal, shuffle=True, random_state=42)
+xTrain, xVal, yTrain, yVal = train_test_split(cellFeatures, cellLabelsOneHot, test_size=0.3, stratify=cellLabels, shuffle=True, random_state=42)
+xVal, xTest, yVal, yTest = train_test_split(xVal, yVal, test_size=0.3, stratify=np.argmax(yVal, axis=1), shuffle=True, random_state=42)
 
 # Compute class weights
 classWeights = compute_class_weight(
     class_weight="balanced",
-    classes=np.unique(yTrain),
-    y=yTrain
+    classes=np.unique(np.argmax(yTrain, axis=1)),
+    y=np.argmax(yTrain, axis=1)
 )
 # Convert to dictionary
 classWeights = dict(enumerate(classWeights))
@@ -205,39 +206,36 @@ xVal = scaler.transform(xVal.reshape(-1, features)).reshape(-1, count, features)
 xTest = scaler.transform(xTest.reshape(-1, features)).reshape(-1, count, features)
 
 # Check the lengths of the sets
-print("Training set:", np.bincount(yTrain.astype(int)))
-print("Validation set:", np.bincount(yVal.astype(int)))
-print("Test set:", np.bincount(yTest.astype(int)))
+print("Training set:", np.bincount(np.argmax(yTrain, axis=1)))
+print("Validation set:", np.bincount(np.argmax(yVal, axis=1)))
+print("Test set:", np.bincount(np.argmax(yTest, axis=1)))
 
 # (OPTIONAL) Run preliminary logistic regression models to see if there's any temporal importance in the dataset
-# logisticModel_T1(xTrain, yTrain, xTest, yTest, 0.90,"Sedimentary Vs Non-Sedimentary")
-# logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, 0.90,"Sedimentary Vs Non-Sedimentary")
-# logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, 0.90, "Sedimentary Vs Non-Sedimentary")
-
-# (OPTIONAL) Hyperparameter optimisation
-# BayesianBinaryOptim(buildSkeleton, xTrain, yTrain, xVal, yVal, xTest, yTest, maxTrials=15, binaryThreshold=0.90, maxEpochs=20, prefix="SedimentaryVsNonSedimentary_LSTM")
+logisticModel_T1(xTrain, yTrain, xTest, yTest, 0.90,"Aged Sedimentary", multiClass=True)
+logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, 0.90,"Aged Sedimentary", multiClass=True)
+logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, 0.90, "Aged Sedimentary", multiClass=True)
 
 # Main Model
 tf.keras.backend.clear_session()
 model =  keras.models.Sequential()
-model.add(tf.keras.layers.LSTM(256, return_sequences=True, input_shape=(count, features)))
+model.add(tf.keras.layers.LSTM(192, return_sequences=True, input_shape=(count, features)))
 model.add(tf.keras.layers.BatchNormalization())
-model.add(tf.keras.layers.Dropout(0.05))
+model.add(tf.keras.layers.Dropout(0.1))
 
 # Second LSTM Layer
-model.add(tf.keras.layers.LSTM(160, return_sequences=False))
+model.add(tf.keras.layers.LSTM(128, return_sequences=False))
 model.add(tf.keras.layers.BatchNormalization())
-model.add(tf.keras.layers.Dropout(0.25))
+model.add(tf.keras.layers.Dropout(0.3))
 
 # Dense Layers for Final Classification
-model.add(tf.keras.layers.Dense(32, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01)))
-model.add(tf.keras.layers.Dropout(0.4))
-model.add(tf.keras.layers.Dense(1, activation="sigmoid"))
+model.add(tf.keras.layers.Dense(64, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+model.add(tf.keras.layers.Dropout(0.5))
+model.add(tf.keras.layers.Dense(5, activation="softmax"))
 
 # Compile
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, clipnorm=1.0)
-model.compile(optimizer=optimizer, loss="binary_crossentropy", metrics=["accuracy"])
-earlyStopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=4, restore_best_weights=True, verbose=1)
+model.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"])
+earlyStopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True, verbose=1)
 lrScheduler = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=4, min_lr=1e-6)
 
 # Check the model summary
@@ -247,7 +245,7 @@ model.summary()
 history = model.fit(
     xTrain, yTrain,
     validation_data=(xVal, yVal),
-    epochs=20,
+    epochs=100,
     batch_size=256,
     class_weight=classWeights,
     callbacks=[earlyStopping, lrScheduler],
@@ -258,15 +256,8 @@ history = model.fit(
 plotAccuracy(history)
 plotLoss(history)
 
-# Can load weights into the model to test a model (Essentially loading a pretrained version of the model)
-# #model.load_weights(pfl.MODELS_OUTPUT_DIR / "globalPredictions_fossiliferousSedimentary_LSTM_0.9611.h5")
-
 # Evaluate the model on the test set
-testPredictions = model.predict(xTest).flatten()
-testBinaryPredictions = (testPredictions >= 0.90).astype(int)
-displayMetricsAgainstRandomGuessing(yTest, yTest, testPredictions, testBinaryPredictions, "Sedimentary Vs Non-Sedimentary LSTM")
+testPredictions = model.predict(xTest)
+testClassPredictions = np.argmax(testPredictions, axis=1)
 
-# Save the weights to the output directory
-outName = f"testPredictions_binarySedimentary_LSTM_{accuracy_score(yTest, testBinaryPredictions):.4f}"
-outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.h5"
-model.save_weights(outputPath)
+displayMetricsAgainstRandomGuessingMultiClass(np.argmax(yTrain, axis=1), np.argmax(yTest, axis=1), testPredictions, testClassPredictions, "Aged Sedimentary")

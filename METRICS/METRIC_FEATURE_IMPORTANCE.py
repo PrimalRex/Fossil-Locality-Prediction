@@ -10,13 +10,13 @@ from scipy.interpolate import make_interp_spline
 
 # Produces feature importances of a given dataset based on a feature/labelset using RandomForestClassifier
 # Produces aggregated feature importances by feature and timestep to inspect both the overall and timestep importance
-def displayFeatureImportance(features, labels, dataframe):
+def displayFeatureImportance(features, labels, dataframe, labelName="SedimentaryLabel"):
     rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
     rf.fit(features, labels)
 
     # Extract feature importances
     importances = rf.feature_importances_
-    featureNames = dataframe.drop("SedimentaryLabel", axis=1).columns
+    featureNames = dataframe.drop(labelName, axis=1).columns
 
     # Create a new dataframe with the feature importances
     featureImportances = pd.DataFrame({
