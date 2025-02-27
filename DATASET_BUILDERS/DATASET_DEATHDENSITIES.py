@@ -16,7 +16,6 @@ from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 # 1 = 1 degree, 181x361 = 65431, 10 = 0.1 degree, 1801x3601 = 6483601
 resolution = 4
 steps = 5
-
 resPrefix = f"{1 / resolution}x{1 / resolution}"
 
 BINNED_FOSSILS_DIR = pfl.DATASET_DIR / "FOSSIL_OCCURRENCE_ANALYSIS" / f"BINNED_BY_{steps}Myr"
@@ -81,4 +80,4 @@ for i in reversed(range(0, len(pflh.getDirectoryFileNames(BINNED_FOSSILS_DIR))))
         plt.show()
 
     # Save the timestep state of the main target as an NPY file
-    np.save(os.path.join(DEATHDENSITY_DATASET_DIR, f"{file}_deathdensitydecay_{(360 * resolution + 1)}.npy"), fossilTarget)
+    # np.save(os.path.join(DEATHDENSITY_DATASET_DIR, f"{file}_deathdensitydecay_{(360 * resolution + 1)}.npy"), fossilTarget)
