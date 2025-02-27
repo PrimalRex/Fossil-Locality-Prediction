@@ -34,7 +34,7 @@ def displayMetricsAgainstRandomGuessingMultiClass(yTrain, yTest, testPredictions
     print(f"{prefix} Precision: {precision_score(yTest, testClassPredictions, average='macro', zero_division=0):.4f}")
     print(f"{prefix} Recall: {recall_score(yTest, testClassPredictions, average='macro', zero_division=0):.4f}")
     print(f"{prefix} F1: {f1_score(yTest, testClassPredictions, average='macro', zero_division=0):.4f}")
-    print(f"{prefix} Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, testClassPredictions):.4f}")
+    #print(f"{prefix} Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, testClassPredictions):.4f}")
     print(f"{prefix} AUC-ROC: {roc_auc_score(yTest, testPredictions, multi_class='ovr', average='macro'):.4f}")
 
     print(f"----------------------------")
@@ -46,5 +46,5 @@ def displayMetricsAgainstRandomGuessingMultiClass(yTrain, yTest, testPredictions
         print(f"{prefix} Random Baseline Precision: {precision_score(yTest, randomTestPredictions, average='macro', zero_division=0):.4f}")
         print(f"{prefix} Random Baseline Recall: {recall_score(yTest, randomTestPredictions, average='macro', zero_division=0):.4f}")
         print(f"{prefix} Random Baseline F1: {f1_score(yTest, randomTestPredictions, average='macro', zero_division=0):.4f}")
-        print(f"{prefix} Random Baseline Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, randomTestPredictions):.4f}")
+        #print(f"{prefix} Random Baseline Fossiliferous Confidence: {fossiliferousConfidenceScore(yTest, randomTestPredictions):.4f}")
         print(f"----------------------------")

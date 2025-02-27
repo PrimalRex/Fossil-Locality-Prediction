@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import compute_class_weight
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
 
 from METRICS.METRIC_FEATURE_IMPORTANCE import displayFeatureImportance
 from METRICS.METRIC_SUMMARY_TABLES import displayMetricsAgainstRandomGuessing, displayMetricsAgainstRandomGuessingMultiClass
@@ -99,7 +99,7 @@ columns.append("AgedSedimentaryLabel")
 
 if not loadCompiledDataframe:
     # Mask to ignore any ocean or ice cells and focus on terrestrial cells
-    oceanMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"OceanMaskBinary_SOLUS_NA_EU.npy", allow_pickle=True).flatten()
+    oceanMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"OceanMaskBinary.npy", allow_pickle=True).flatten()
     # Load the aged sedimentary labels
     agedSedimentaryLabels = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"approxMyaSedimentRegions.npy", allow_pickle=True).flatten()
     #print(np.shape(agedSedimentaryLabels))
@@ -178,10 +178,10 @@ if not loadCompiledDataframe:
 
     # Save the dataframe to a .npy file for caching
     print("Saving Dataframe to disk...")
-    np.save(COMPILED_DATAFRAMES_DIR / f"{resPrefix}CategoricalAgedSedimentary_SOLUS_NA_EU_(STAGE3)Dataset.npy", df.values)
+    np.save(COMPILED_DATAFRAMES_DIR / f"{resPrefix}CategoricalAgedSedimentary(STAGE3)Dataset.npy", df.values)
 
 # Load the dataframe from the .npy file
-df = pd.DataFrame(np.load(COMPILED_DATAFRAMES_DIR / f"{resPrefix}CategoricalAgedSedimentary_SOLUS_NA_EU_(STAGE3)Dataset.npy"), columns=columns)
+df = pd.DataFrame(np.load(COMPILED_DATAFRAMES_DIR / f"{resPrefix}CategoricalAgedSedimentary(STAGE3)Dataset.npy"), columns=columns)
 print(df.head())
 cellLabels = df["AgedSedimentaryLabel"].values.flatten()
 # Convert to one-hot encoding
@@ -189,7 +189,7 @@ cellLabelsOneHot = to_categorical(cellLabels, num_classes=np.unique(cellLabels).
 cellFeatures = df.drop("AgedSedimentaryLabel", axis=1).values
 
 # Find the feature importance of the dataset
-displayFeatureImportance(cellFeatures, np.argmax(cellLabelsOneHot, axis=1), df, "AgedSedimentaryLabel")
+# displayFeatureImportance(cellFeatures, np.argmax(cellLabelsOneHot, axis=1), df, "AgedSedimentaryLabel")
 
 # Stratified split for train/test/val sets
 xTrain, xVal, yTrain, yVal = train_test_split(cellFeatures, cellLabelsOneHot, test_size=0.3, stratify=cellLabels, shuffle=True, random_state=42)
@@ -221,9 +221,9 @@ print("Validation set:", np.bincount(np.argmax(yVal, axis=1)))
 print("Test set:", np.bincount(np.argmax(yTest, axis=1)))
 
 # (OPTIONAL) Run preliminary logistic regression models to see if there's any temporal importance in the dataset
-logisticModel_T1(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
-logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
-logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
+#logisticModel_T1(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
+#logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
+#logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
 
 # Main Model
 tf.keras.backend.clear_session()
@@ -245,37 +245,46 @@ model.add(tf.keras.layers.Dense(6, activation="softmax"))
 # Compile
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.00013562501444661616, clipnorm=1.0)
 model.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"])
-earlyStopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True, verbose=1)
-lrScheduler = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=4, min_lr=1e-6)
+earlyStopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=7, restore_best_weights=True, verbose=1)
+lrScheduler = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=5, min_lr=1e-6)
 
 # Check the model summary
 model.summary()
 
 # Train
-history = model.fit(
-    xTrain, yTrain,
-    validation_data=(xVal, yVal),
-    epochs=50,
-    batch_size=256,
-    class_weight=classWeights,
-    callbacks=[earlyStopping, lrScheduler],
-    verbose=1
-)
+# history = model.fit(
+#     xTrain, yTrain,
+#     validation_data=(xVal, yVal),
+#     epochs=50,
+#     batch_size=256,
+#     class_weight=classWeights,
+#     callbacks=[earlyStopping, lrScheduler],
+#     verbose=1
+# )
 
 # Plot training graphs
-plotAccuracy(history)
-plotLoss(history)
+#plotAccuracy(history)
+#plotLoss(history)
+
+# Can load weights into the model to test a model (Essentially loading a pretrained version of the model)
+model.load_weights(pfl.MODELS_OUTPUT_DIR / "testPredictions_categoricalAgedSedimentary_LSTM_0.8463.h5")
 
 # Evaluate the model on the test set
 testPredictions = model.predict(xTest)
 testClassPredictions = np.argmax(testPredictions, axis=1)
-
 displayMetricsAgainstRandomGuessingMultiClass(np.argmax(yTrain, axis=1), np.argmax(yTest, axis=1), testPredictions, testClassPredictions, "Aged Sedimentary")
 
-# # Apply the 90% confidence threshold
-# high_confidence_mask = np.max(testPredictions, axis=1) >= 0.90
-# high_confidence_predictions = testClassPredictions[high_confidence_mask]
-# high_confidence_yTest = yTest[high_confidence_mask]
-#
-# # Display metrics for high confidence predictions
-# displayMetricsAgainstRandomGuessingMultiClass(yTrain, np.argmax(high_confidence_yTest, axis=1), testPredictions[high_confidence_mask], high_confidence_predictions, "Aged Sedimentary")
+# Save the weights to the output directory
+outName = f"testPredictions_categoricalAgedSedimentary_LSTM_{accuracy_score(np.argmax(yTest, axis=1), testClassPredictions):.4f}"
+outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.h5"
+#model.save_weights(outputPath)
+
+# Get classification report to inspect each category
+classes = ["N/A", "Ceno.", "Cret.", "Juras.", "Trias.", "Pre-Meso."]
+print(classification_report(np.argmax(yTest, axis=1), testClassPredictions, target_names=classes, digits=4))
+cm = confusion_matrix( np.argmax(yTest, axis=1), testClassPredictions)
+cmDisplay = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+plt.figure(figsize=(15, 15))
+cmDisplay.plot()
+plt.title("Confusion Matrix for Aged Sedimentary Classification")
+plt.show()

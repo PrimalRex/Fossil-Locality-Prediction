@@ -262,22 +262,22 @@ lrScheduler = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.
 model.summary()
 
 # Train
-history = model.fit(
-    xTrain, yTrain,
-    #validation_data=(xVal, yVal),
-    epochs=33,
-    batch_size=256,
-    class_weight=classWeights,
-    #callbacks=[earlyStopping, lrScheduler],
-    verbose=1
-)
+# history = model.fit(
+#     xTrain, yTrain,
+#     #validation_data=(xVal, yVal),
+#     epochs=33,
+#     batch_size=256,
+#     class_weight=classWeights,
+#     #callbacks=[earlyStopping, lrScheduler],
+#     verbose=1
+# )
 
 # Plot training graphs
 # plotAccuracy(history)
 # plotLoss(history)
 
 # Can load weights into the model to test a model (Essentially loading a pretrained version of the model)
-# model.load_weights(pfl.MODELS_OUTPUT_DIR / "testPredictions_binarySedimentary_LSTM_0.8523.h5")
+model.load_weights(pfl.MODELS_OUTPUT_DIR / "testPredictions_binarySedimentary_LSTM_0.8445.h5")
 
 # Evaluate the model on the test set
 testPredictions = model.predict(xTest).flatten()
@@ -287,4 +287,4 @@ displayMetricsAgainstRandomGuessing(yTest, yTest, testPredictions, testBinaryPre
 # Save the weights to the output directory
 outName = f"testPredictions_binarySedimentary_LSTM_{accuracy_score(yTest, testBinaryPredictions):.4f}"
 outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.h5"
-model.save_weights(outputPath)
+#model.save_weights(outputPath)
