@@ -4,17 +4,16 @@ import pathlib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from PIL import Image
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.utils import to_categorical
-import keras_tuner as kt
 from sklearn.model_selection import train_test_split
 from sklearn.utils import compute_class_weight
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
 
+from MAIN.MODELS.MODEL_KERASTUNER import HyperbandCategoricalOptim
 from METRICS.METRIC_FEATURE_IMPORTANCE import displayFeatureImportance
 from METRICS.METRIC_SUMMARY_TABLES import displayMetricsAgainstRandomGuessing, displayMetricsAgainstRandomGuessingMultiClass
 from MODEL_TEMPORAL_LOGISTIC_REGRESSIONS import logisticModel_T1, logisticModel_FlatVector, logisticModel_MeanAverage
@@ -61,6 +60,29 @@ loadCompiledDataframe = True
 
 # Define the path to resources given by our input
 resPrefix = f"{1 / resolution}x{1 / resolution}"
+
+# HYPERPARAMETER OPTIMISATION -------------------------------------------------------------------
+
+# Model to be passed into keras fine tuner
+def buildSkeleton(hp):
+    model = keras.models.Sequential()
+    model.add(tf.keras.layers.LSTM(units=hp.Int("LSTM_1", min_value=384, max_value=544, step=32), return_sequences=True, input_shape=(count, features)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.Dropout(hp.Float("dropout_1", min_value=0.05, max_value=0.5, step=0.05)))
+
+    model.add(tf.keras.layers.LSTM(units=hp.Int("LSTM_2", min_value=224, max_value=320, step=32), return_sequences=False))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.Dropout(hp.Float("dropout_2", min_value=0.05, max_value=0.5, step=0.05)))
+
+    model.add(tf.keras.layers.Dense(units=hp.Int("dense_1", min_value=64, max_value=160, step=16), activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dropout(hp.Float("dropout_3", min_value=0.05, max_value=0.5, step=0.05)))
+    model.add(tf.keras.layers.Dense(6, activation="softmax"))
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=hp.Float("learning_rate", min_value=1e-5, max_value=1e-2, sampling="log"))
+    model.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"])
+    return model
+
+# MAIN ------------------------------------------------------------------------
 
 # Retrieve the right resources based on the resolution
 CLIMATE_PRECIPITATION_RESOURCE_DIR = pfl.DATASET_DIR / f"{resPrefix}MeanAnnualPrecipitation"
@@ -196,8 +218,8 @@ xTrain, xVal, yTrain, yVal = train_test_split(cellFeatures, cellLabelsOneHot, te
 xVal, xTest, yVal, yTest = train_test_split(xVal, yVal, test_size=0.6, stratify=np.argmax(yVal, axis=1), shuffle=True, random_state=42)
 
 # (OPTIONAL) Full training split train/test sets (No validation set)
-# xTrain = np.concatenate((xTrain, xVal))
-# yTrain = np.concatenate((yTrain, yVal))
+xTrain = np.concatenate((xTrain, xVal))
+yTrain = np.concatenate((yTrain, yVal))
 
 # Compute class weights
 classWeights = compute_class_weight(
@@ -208,7 +230,7 @@ classWeights = compute_class_weight(
 # Convert to dictionary
 classWeights = dict(enumerate(classWeights))
 
-# Initialize the scaler
+# Use the standard scaler
 scaler = StandardScaler()
 # Flatten to features and then reshape to the regular format for RNN
 xTrain = scaler.fit_transform(xTrain.reshape(-1, features)).reshape(-1, count, features)
@@ -225,25 +247,28 @@ print("Test set:", np.bincount(np.argmax(yTest, axis=1)))
 #logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
 #logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, prefix="Aged Sedimentary", multiClass=True)
 
+# (OPTIONAL) Hyperparameter optimisation
+# HyperbandCategoricalOptim(buildSkeleton, xTrain, yTrain, xVal, yVal, xTest, yTest, maxEpochs=50, prefix="CategoricalSedimentary_LSTM_HYPERBAND")
+
 # Main Model
 tf.keras.backend.clear_session()
 model = keras.models.Sequential()
-model.add(tf.keras.layers.LSTM(480, return_sequences=True, input_shape=(count, features)))
+model.add(tf.keras.layers.LSTM(512, return_sequences=True, input_shape=(count, features)))
 model.add(tf.keras.layers.BatchNormalization())
-model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dropout(0.05))
 
 # Second LSTM Layer
-model.add(tf.keras.layers.LSTM(256, return_sequences=False))
+model.add(tf.keras.layers.LSTM(288, return_sequences=False))
 model.add(tf.keras.layers.BatchNormalization())
-model.add(tf.keras.layers.Dropout(0.1))
+model.add(tf.keras.layers.Dropout(0.05))
 
 # Dense Layers for Final Classification
-model.add(tf.keras.layers.Dense(128, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01)))
-model.add(tf.keras.layers.Dropout(0.4))
+model.add(tf.keras.layers.Dense(64, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+model.add(tf.keras.layers.Dropout(0.05))
 model.add(tf.keras.layers.Dense(6, activation="softmax"))
 
 # Compile
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.00013562501444661616, clipnorm=1.0)
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.00049723, clipnorm=1.0)
 model.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"])
 earlyStopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=7, restore_best_weights=True, verbose=1)
 lrScheduler = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=5, min_lr=1e-6)
@@ -251,23 +276,26 @@ lrScheduler = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.
 # Check the model summary
 model.summary()
 
+# Can load weights into the model to test a model (Essentially loading a pretrained version of the model)
+# model.load_weights(pfl.MODELS_OUTPUT_DIR / "testPredictions_categoricalAgedSedimentary_LSTM_0.8816.h5")
+
 # Train
 # history = model.fit(
 #     xTrain, yTrain,
-#     validation_data=(xVal, yVal),
+#     #validation_data=(xVal, yVal),
 #     epochs=50,
 #     batch_size=256,
 #     class_weight=classWeights,
-#     callbacks=[earlyStopping, lrScheduler],
+#     #callbacks=[earlyStopping, lrScheduler],
 #     verbose=1
 # )
 
 # Plot training graphs
-#plotAccuracy(history)
-#plotLoss(history)
+# plotAccuracy(history)
+# plotLoss(history)
 
 # Can load weights into the model to test a model (Essentially loading a pretrained version of the model)
-model.load_weights(pfl.MODELS_OUTPUT_DIR / "testPredictions_categoricalAgedSedimentary_LSTM_0.8463.h5")
+model.load_weights(pfl.MODELS_OUTPUT_DIR / "testPredictions_categoricalAgedSedimentary_LSTM_0.8816.h5")
 
 # Evaluate the model on the test set
 testPredictions = model.predict(xTest)
@@ -282,9 +310,49 @@ outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.h5"
 # Get classification report to inspect each category
 classes = ["N/A", "Ceno.", "Cret.", "Juras.", "Trias.", "Pre-Meso."]
 print(classification_report(np.argmax(yTest, axis=1), testClassPredictions, target_names=classes, digits=4))
-cm = confusion_matrix( np.argmax(yTest, axis=1), testClassPredictions)
+# Make a confusion matrix to visualise the precision/recall
+cm = confusion_matrix(np.argmax(yTest, axis=1), testClassPredictions)
 cmDisplay = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
-plt.figure(figsize=(15, 15))
 cmDisplay.plot()
-plt.title("Confusion Matrix for Aged Sedimentary Classification")
+plt.title("Confusion Matrix Age-Categorised (Test Set)")
+plt.show()
+
+
+# Predict on the entire dataset
+print("Predicting on the entire dataset...")
+cellFeaturesScaled = scaler.transform(cellFeatures.reshape(-1, features)).reshape(-1, count, features)
+globalPredictions = model.predict(cellFeaturesScaled)
+globalClassPredictions = np.argmax(globalPredictions, axis=1)
+
+spatialPredictions = np.zeros((180 * resolution + 1, 360 * resolution + 1))
+oceanMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"OceanMaskBinary.npy", allow_pickle=True).reshape(180 * resolution + 1, 360 * resolution + 1)
+sedimentMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"approxMyaSedimentRegions.npy", allow_pickle=True).reshape(180 * resolution + 1, 360 * resolution + 1)
+sedimentMask = np.where(sedimentMask > 1, 1, 0)
+
+# Map predictions back to spatial grid
+currentIdx = 0
+for i in range(oceanMask.shape[0]):
+    for j in range(oceanMask.shape[1]):
+        if oceanMask[i, j] == 1:
+            if sedimentMask[i, j] == 1:
+                spatialPredictions[i, j] = globalClassPredictions[currentIdx]
+            else:
+                spatialPredictions[i, j] = 0
+            currentIdx += 1
+
+# Plot
+plt.figure(figsize=(10, 5))
+sc = plt.imshow(spatialPredictions, cmap="viridis", interpolation="nearest")
+cbar = plt.colorbar(sc, ticks=np.arange(len(classes)))
+cbar.ax.set_yticklabels(classes)
+plt.grid(False)
+plt.tight_layout()
+plt.show()
+
+classes = ["N/A", "Ceno.", "Cret.", "Juras.", "Trias.", "Pre-Meso."]
+print(classification_report(np.argmax(cellLabelsOneHot, axis=1), globalClassPredictions, target_names=classes, digits=4))
+cm = confusion_matrix(np.argmax(cellLabelsOneHot, axis=1), globalClassPredictions)
+cmDisplay = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+cmDisplay.plot()
+plt.title("Confusion Matrix Age-Categorised (Full Dataset)")
 plt.show()

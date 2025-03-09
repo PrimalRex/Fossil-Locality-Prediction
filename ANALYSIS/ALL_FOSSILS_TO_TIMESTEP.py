@@ -52,11 +52,10 @@ for file in tqdm(pflh.getDirectoryFileNames(CLEANED_FOSSIL_OCCURRENCE_DIR), desc
     with open(os.path.join(CLEANED_FOSSIL_OCCURRENCE_DIR, file), "r", encoding="utf-8") as f:
         df = pd.read_csv(f)
         allFossils.append(df)
-
 df = pd.concat(allFossils, ignore_index=True)
 
 # Create a column to find an approximate age
-# TODO: Future Stages may benefit from a better approximation of age... Unsure at this point
+# NOTE: Classifications may benefit from a different heuristic approximation of ages, for the most even an average is used
 df["midAge"] = (df["minMa"] + df["maxMa"]) / 2
 # Find the bin based on that age
 df["binnedAge"] = df["midAge"].apply(findNearestBin)

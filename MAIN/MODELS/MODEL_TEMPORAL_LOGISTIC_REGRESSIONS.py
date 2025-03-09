@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.utils import compute_class_weight
+
 from METRICS.METRIC_SUMMARY_TABLES import displayMetricsAgainstRandomGuessing, displayMetricsAgainstRandomGuessingMultiClass
 from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
@@ -18,16 +20,20 @@ def logisticModel_T1(xTrain, yTrain, xTest, yTest, binaryThreshold=0.90, prefix=
     xTestT1 = xTest[:, -1, :]
 
     if not multiClass:
+        # Compute class weights
+        classWeights = compute_class_weight(class_weight="balanced",classes=np.unique(yTrain), y=yTrain)
         # Binary Logistic Regression
-        logReg = LogisticRegression(max_iter=1000)
+        logReg = LogisticRegression(max_iter=1000, class_weight=dict(enumerate(classWeights)))
         logReg.fit(xTrainT1, yTrain)
 
         testPredictions = logReg.predict_proba(xTestT1)[:, 1]
         testBinaryPredictions = (testPredictions >= binaryThreshold).astype(int)
         displayMetricsAgainstRandomGuessing(yTest, yTest, testPredictions, testBinaryPredictions, f"{prefix} LOGISTIC T1", False)
     else:
+        # Compute class weights
+        classWeights = compute_class_weight(class_weight="balanced",classes=np.unique(np.argmax(yTrain, axis=1)),y=np.argmax(yTrain, axis=1))
         # MultiClass Logistic Regression
-        logReg = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs")
+        logReg = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs", class_weight=dict(enumerate(classWeights)))
         logReg.fit(xTrainT1, np.argmax(yTrain, axis=1))
 
         testPredictions = logReg.predict_proba(xTestT1)
@@ -40,14 +46,18 @@ def logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, binaryThreshold=0.90,
     xTestFlatVector = xTest.reshape(xTest.shape[0], -1)
 
     if not multiClass:
-        logRegFlatVector = LogisticRegression(max_iter=1000)
+        # Compute class weights
+        classWeights = compute_class_weight(class_weight="balanced",classes=np.unique(yTrain), y=yTrain)
+        logRegFlatVector = LogisticRegression(max_iter=1000, class_weight=dict(enumerate(classWeights)))
         logRegFlatVector.fit(xTrainFlatVector, yTrain)
 
         testPredictionsFlatVector = logRegFlatVector.predict_proba(xTestFlatVector)[:, 1]
         testBinaryPredictionsFlatVector = (testPredictionsFlatVector >= binaryThreshold).astype(int)
         displayMetricsAgainstRandomGuessing(yTest, yTest, testPredictionsFlatVector, testBinaryPredictionsFlatVector, f"{prefix} LOGISTIC Flat Vector", False)
     else:
-        logRegFlatVector = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs")
+        # Compute class weights
+        classWeights = compute_class_weight(class_weight="balanced",classes=np.unique(np.argmax(yTrain, axis=1)),y=np.argmax(yTrain, axis=1))
+        logRegFlatVector = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs", class_weight=dict(enumerate(classWeights)))
         logRegFlatVector.fit(xTrainFlatVector, np.argmax(yTrain, axis=1))
 
         testPredictionsFlatVector = logRegFlatVector.predict_proba(xTestFlatVector)
@@ -61,14 +71,18 @@ def logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, binaryThreshold=0.90
     xTestAvg = np.mean(xTest, axis=1)
 
     if not multiClass:
-        logRegAvg = LogisticRegression(max_iter=1000)
+        # Compute class weights
+        classWeights = compute_class_weight(class_weight="balanced",classes=np.unique(yTrain), y=yTrain)
+        logRegAvg = LogisticRegression(max_iter=1000, class_weight=dict(enumerate(classWeights)))
         logRegAvg.fit(xTrainAvg, yTrain)
 
         testPredictionsAvg = logRegAvg.predict_proba(xTestAvg)[:, 1]
         testBinaryPredictionsAvg = (testPredictionsAvg >= binaryThreshold).astype(int)
         displayMetricsAgainstRandomGuessing(yTest, yTest, testPredictionsAvg, testBinaryPredictionsAvg,f"{prefix} LOGISTIC Mean Average", False)
     else:
-        logRegAvg = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs")
+        # Compute class weights
+        classWeights = compute_class_weight(class_weight="balanced",classes=np.unique(np.argmax(yTrain, axis=1)),y=np.argmax(yTrain, axis=1))
+        logRegAvg = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs", class_weight=dict(enumerate(classWeights)))
         logRegAvg.fit(xTrainAvg, np.argmax(yTrain, axis=1))
 
         testPredictionsAvg = logRegAvg.predict_proba(xTestAvg)

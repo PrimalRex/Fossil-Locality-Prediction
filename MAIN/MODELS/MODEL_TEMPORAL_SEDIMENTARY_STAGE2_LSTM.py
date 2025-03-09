@@ -3,6 +3,7 @@ import pathlib
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow.keras as keras
 from sklearn.metrics import accuracy_score
@@ -15,7 +16,7 @@ from METRICS.METRIC_FEATURE_IMPORTANCE import displayFeatureImportance
 from METRICS.METRIC_SUMMARY_TABLES import displayMetricsAgainstRandomGuessing
 from MODEL_TEMPORAL_LOGISTIC_REGRESSIONS import logisticModel_T1, logisticModel_FlatVector, logisticModel_MeanAverage
 from VISUALISERS.PLOT_TRAIN_HISTORY import plotAccuracy, plotLoss
-from MODEL_KERASTUNER_BINARY import BayesianBinaryOptim, HyperbandBinaryOptim
+from MODEL_KERASTUNER import BayesianBinaryOptim, HyperbandBinaryOptim
 from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # MAIN ------------------------------------------------------------------------
@@ -214,7 +215,7 @@ classWeights = compute_class_weight(
 # Convert to dictionary
 classWeights = dict(enumerate(classWeights))
 
-# Initialize the scaler
+# Use the standard scaler
 scaler = StandardScaler()
 # Flatten to features and then reshape to the regular format for RNN
 xTrain = scaler.fit_transform(xTrain.reshape(-1, features)).reshape(-1, count, features)
@@ -227,9 +228,9 @@ print("Validation set:", np.bincount(yVal.astype(int)))
 print("Test set:", np.bincount(yTest.astype(int)))
 
 # (OPTIONAL) Run preliminary logistic regression models to see if there's any temporal importance in the dataset
-# logisticModel_T1(xTrain, yTrain, xTest, yTest, 0.90,"Sedimentary Vs Non-Sedimentary")
-# logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, 0.90,"Sedimentary Vs Non-Sedimentary")
-# logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, 0.90, "Sedimentary Vs Non-Sedimentary")
+logisticModel_T1(xTrain, yTrain, xTest, yTest, 0.90,"Sedimentary Vs Non-Sedimentary")
+logisticModel_FlatVector(xTrain, yTrain, xTest, yTest, 0.90,"Sedimentary Vs Non-Sedimentary")
+logisticModel_MeanAverage(xTrain, yTrain, xTest, yTest, 0.90, "Sedimentary Vs Non-Sedimentary")
 
 # (OPTIONAL) Hyperparameter optimisation
 # BayesianBinaryOptim(buildSkeleton, xTrain, yTrain, xVal, yVal, xTest, yTest, maxTrials=15, binaryThreshold=0.50, maxEpochs=20, prefix="SedimentaryVsNonSedimentary_LSTM_BAYESIAN")
@@ -288,3 +289,31 @@ displayMetricsAgainstRandomGuessing(yTest, yTest, testPredictions, testBinaryPre
 outName = f"testPredictions_binarySedimentary_LSTM_{accuracy_score(yTest, testBinaryPredictions):.4f}"
 outputPath = pathlib.Path(pfl.MODELS_OUTPUT_DIR) / f"{outName}.h5"
 #model.save_weights(outputPath)
+
+
+# Predict on the entire dataset
+print("Predicting on the entire dataset...")
+cellFeaturesScaled = scaler.transform(cellFeatures.reshape(-1, features)).reshape(-1, count, features)
+globalPredictions = model.predict(cellFeaturesScaled).flatten()
+globalBinaryPredictions = (globalPredictions >= 0.90).astype(int)
+
+spatialPredictions = np.zeros((180 * resolution + 1, 360 * resolution + 1))
+oceanMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"OceanMaskBinary.npy", allow_pickle=True).reshape(180 * resolution + 1, 360 * resolution + 1)
+sedimentMask = np.load(FOSSIL_SEDIMENT_LABELS_DIR / f"SedimentBinaryRegions.npy", allow_pickle=True).reshape(180 * resolution + 1, 360 * resolution + 1)
+
+# Map predictions back to spatial grid
+currentIdx = 0
+for i in range(oceanMask.shape[0]):
+    for j in range(oceanMask.shape[1]):
+        if oceanMask[i, j] == 1:
+            if sedimentMask[i, j] == 1:
+                spatialPredictions[i, j] = globalBinaryPredictions[currentIdx]
+            else:
+                spatialPredictions[i, j] = 0
+            currentIdx += 1
+
+plt.figure(figsize=(10, 5))
+sc = plt.imshow(spatialPredictions, cmap="viridis", interpolation="nearest")
+plt.grid(False)
+plt.tight_layout()
+plt.show()

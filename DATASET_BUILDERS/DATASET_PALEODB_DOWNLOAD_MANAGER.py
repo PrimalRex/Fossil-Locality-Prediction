@@ -8,7 +8,13 @@ from MAIN import PFL_HELPER as pflh, PFL_PATHS as pfl
 
 # Simple tool to download fossil occurrences by time step from the PaleoDB API
 # Does not currently batch execute but provides the same desired effect to generate fossil data for multiple time steps
-# TODO: Rework parameters into a function based system so this can be more of a 'manager' rather than a dependent script for 1 file
+######################################################################
+######################################################################
+######################################################################
+# WARNING: DEPRICATED AND NOT USED IN ANY ANALYSIS
+######################################################################
+######################################################################
+######################################################################
 
 # Define the time range for intervals (Inclusive)
 startMYA = 245

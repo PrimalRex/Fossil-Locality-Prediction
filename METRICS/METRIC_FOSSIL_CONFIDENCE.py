@@ -6,7 +6,7 @@ from sklearn.metrics import recall_score
 # Measures the confidence in the model through its prediction in each cell. This metric focuses
 # on finding trustworthy confidence levels to show evidence for a correct prediction with unknown ground truth cells.
 def fossiliferousConfidenceScore (groundTruths, predictions):
-    # Convert from softmax to binary if necessary
+    # Convert from softmax to binary if necessary ?
     if len(groundTruths.shape) > 1 and groundTruths.shape[1] > 1:
         groundTruths = np.argmax(groundTruths, axis=1)
     if len(predictions.shape) > 1 and predictions.shape[1] > 1:
