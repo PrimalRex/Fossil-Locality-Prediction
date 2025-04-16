@@ -15,7 +15,7 @@ resolution = 4
 # Define the path to resources given by our input
 resPrefix = f"{1 / resolution}x{1 / resolution}"
 # Folder name without prefix
-suffix = "FossilOccurrences"
+suffix = "NDVI"
 
 # Our main resource
 CSV_DIR = pfl.RESOURCES_DIR / f"{resPrefix}{suffix}"

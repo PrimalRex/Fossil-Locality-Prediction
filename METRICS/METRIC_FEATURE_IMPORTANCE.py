@@ -60,3 +60,30 @@ def displayFeatureImportance(features, labels, dataframe, labelName="Sedimentary
     plt.grid()
     plt.tight_layout()
     plt.show()
+
+# If we just want to ignore the temporal aspect (spatial model) and investigate 1 time step
+def displayFeatureImportanceSingleTimestep(features, labels, dataframe, labelName="SedimentaryLabel"):
+    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+    rf.fit(features, labels)
+
+    # Extract feature importances
+    importances = rf.feature_importances_
+    featureNames = dataframe.drop(labelName, axis=1).columns
+
+    # Create a new dataframe with the feature importances
+    featureImportances = pd.DataFrame({
+        "Feature": featureNames,
+        "Importance": importances
+    })
+
+    # Sort the feature importances
+    featureImportances = featureImportances.sort_values(by="Importance", ascending=False)
+
+    # Plot feature importance
+    plt.figure(figsize=(12, 6))
+    plt.barh(featureImportances["Feature"], featureImportances["Importance"])
+    plt.xlabel("Importance")
+    plt.title("Feature Importances")
+    plt.gca().invert_yaxis()
+    plt.tight_layout()
+    plt.show()

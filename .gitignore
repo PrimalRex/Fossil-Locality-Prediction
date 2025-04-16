@@ -3,6 +3,7 @@ DATASETS/
 .idea/
 ARCHIVE/
 OUTPUT/
+PREDICTIONS/
 GRAPHS/
 *.aux.xml
 kerastuner/
