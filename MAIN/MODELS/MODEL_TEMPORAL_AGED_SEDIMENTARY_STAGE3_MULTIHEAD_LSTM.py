@@ -128,7 +128,7 @@ resolution = 4
 # How many features we are looking at (precipitation, temperature, elevation, koppen)
 features = 10
 # If we want to do a fresh dataframe construction or use a cached version
-loadCompiledDataframe = True
+loadCompiledDataframe = False
 
 # Define the path to resources given by our input
 resPrefix = f"{1 / resolution}x{1 / resolution}"

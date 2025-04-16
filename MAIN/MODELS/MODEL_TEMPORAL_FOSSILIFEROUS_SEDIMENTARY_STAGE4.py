@@ -37,7 +37,7 @@ resolution = 4
 # How many features we are looking at (precipitation, temperature, elevation, koppen)
 features = 10
 # If we want to do a fresh dataframe construction or use a cached version
-loadCompiledDataframe = True
+loadCompiledDataframe = False
 # Which period we should be looking to tune towards
 geologicPrefix = "AllPeriods"
 
